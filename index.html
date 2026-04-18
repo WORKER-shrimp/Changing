@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="香港免費 JPG 轉 PDF 工具 • 即時、多張圖合成、零上傳、100% 私隱">
+    <title>香港免費 JPG 轉 PDF | 圖片轉 PDF 工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
+        .hero-bg { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-gray-900 border-b sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-2xl font-bold text-blue-600">
+                📄 轉 PDF
+            </div>
+            <div class="flex gap-8 text-sm font-medium">
+                <a href="#" class="hover:text-blue-600 transition">首頁</a>
+                <a href="#" class="hover:text-blue-600 transition">關於</a>
+                <a href="#" class="hover:text-blue-600 transition">私隱政策</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero-bg py-16 text-white text-center">
+        <div class="max-w-4xl mx-auto px-6">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4">免費 JPG 轉 PDF</h1>
+            <p class="text-xl opacity-90">即時轉換 • 多張圖合成一本 PDF • 零上傳 • 香港人最愛用</p>
+        </div>
+    </div>
+
+    <!-- Converter -->
+    <div class="max-w-5xl mx-auto px-6 py-12">
+        <div id="converter" class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-8">
+            <!-- Dropzone -->
+            <div id="dropzone" 
+                 class="border-4 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-12 text-center hover:border-blue-500 transition-all cursor-pointer">
+                <div class="mx-auto w-16 h-16 mb-4 text-blue-600">📤</div>
+                <p class="text-2xl font-semibold mb-2">拖放圖片到這裡</p>
+                <p class="text-gray-500">支援 JPG、PNG、WebP • 可一次多張</p>
+                <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+            </div>
+
+            <!-- Preview -->
+            <div id="previewArea" class="mt-8 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-lg flex items-center gap-2">📸 已選擇 <span id="fileCount" class="text-blue-600"></span> 張圖片</h3>
+                    <button onclick="clearAll()" class="text-red-500 hover:text-red-600 flex items-center gap-1 text-sm">
+                        🗑 清空全部
+                    </button>
+                </div>
+                <div id="previews" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </div>
+
+            <!-- Settings -->
+            <div id="settingsArea" class="mt-10 bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 hidden">
+                <div class="flex items-center gap-2 mb-4">
+                    ⚙️ <span class="font-semibold">轉換設定</span>
+                </div>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm mb-2">紙張大小</label>
+                        <select id="paperSize" class="w-full rounded-xl border p-3 bg-white dark:bg-gray-900">
+                            <option value="a4">A4 (最常用)</option>
+                            <option value="a3">A3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">方向</label>
+                        <select id="orientation" class="w-full rounded-xl border p-3 bg-white dark:bg-gray-900">
+                            <option value="portrait">直向 (Portrait)</option>
+                            <option value="landscape">橫向 (Landscape)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Convert Button -->
+            <button onclick="convertToPDF()" 
+                    id="convertBtn"
+                    class="mt-10 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-xl font-semibold py-6 rounded-3xl flex items-center justify-center gap-3 shadow-lg transition">
+                📥 轉成 PDF 並下載
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12 text-center text-sm">
+        <p>© 2026 香港免費轉 PDF 工具 • 全部轉換喺你瀏覽器完成 • 100% 私隱</p>
+        <p class="mt-2">有問題？聯絡 tsz@converter.hk</p>
+    </footer>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        let files = [];
+        let previewURLs = [];
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
+        const previewsContainer = document.getElementById('previews');
+        const fileCount = document.getElementById('fileCount');
+        const settingsArea = document.getElementById('settingsArea');
+        const convertBtn = document.getElementById('convertBtn');
+
+        // Tailwind script init
+        function initTailwind() {
+            tailwind.config = {
+                content: [],
+                theme: { extend: {} }
+            };
+        }
+
+        // Drag & Drop + Click
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        dropzone.addEventListener('dragover', e => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-950');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-950');
+        });
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-950');
+            handleFiles(e);
+        });
+
+        function handleFiles(e) {
+            const newFiles = e.target.files || e.dataTransfer.files;
+            files = [...files, ...newFiles];
+            renderPreviews();
+        }
+
+        function renderPreviews() {
+            previewArea.classList.remove('hidden');
+            settingsArea.classList.remove('hidden');
+            previewsContainer.innerHTML = '';
+            fileCount.textContent = files.length;
+
+            previewURLs.forEach(url => URL.revokeObjectURL(url));
+            previewURLs = [];
+
+            files.forEach((file, i) => {
+                const url = URL.createObjectURL(file);
+                previewURLs.push(url);
+
+                const div = document.createElement('div');
+                div.className = 'relative group';
+                div.innerHTML = `
+                    <img src="${url}" class="w-full aspect-square object-cover rounded-2xl shadow-md">
+                    <button onclick="removeFile(${i}); event.stopImmediatePropagation();" 
+                            class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition">🗑</button>
+                `;
+                previewsContainer.appendChild(div);
+            });
+        }
+
+        function removeFile(index) {
+            files.splice(index, 1);
+            renderPreviews();
+            if (files.length === 0) {
+                previewArea.classList.add('hidden');
+                settingsArea.classList.add('hidden');
+            }
+        }
+
+        function clearAll() {
+            files = [];
+            previewURLs.forEach(url => URL.revokeObjectURL(url));
+            previewURLs = [];
+            previewArea.classList.add('hidden');
+            settingsArea.classList.add('hidden');
+        }
+
+        async function convertToPDF() {
+            if (files.length === 0) return;
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '轉換中… 請稍候';
+
+            const pdf = new jsPDF({
+                orientation: document.getElementById('orientation').value,
+                unit: 'mm',
+                format: document.getElementById('paperSize').value === 'a4' ? 'a4' : 'a3'
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            for (let i = 0; i < files.length; i++) {
+                if (i > 0) pdf.addPage();
+
+                const imgData = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.readAsDataURL(files[i]);
+                });
+
+                const imgProps = pdf.getImageProperties(imgData);
+                const ratio = Math.min((pageWidth - 10) / imgProps.width, (pageHeight - 10) / imgProps.height);
+                const width = imgProps.width * ratio;
+                const height = imgProps.height * ratio;
+
+                pdf.addImage(imgData, 'JPEG', (pageWidth - width)/2, (pageHeight - height)/2, width, height);
+            }
+
+            pdf.save(`轉換後_PDF_${new Date().toISOString().slice(0,10)}.pdf`);
+            convertBtn.disabled = false;
+            convertBtn.innerHTML = '📥 轉成 PDF 並下載';
+        }
+
+        // Init
+        initTailwind();
+    </script>
+</body>
+</html>
